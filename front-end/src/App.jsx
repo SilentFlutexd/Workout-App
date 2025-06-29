@@ -9,6 +9,7 @@ import NotFoundPage from './pages/NotFoundPage';
 import Layout from './Layout';
 import AboutPage from './pages/AboutPage';
 import WorkoutsPage from './pages/WorkoutsPage';
+import WorkoutTypePage from './pages/WorkoutTypePage';
 
 const routes = [{
   path: '/',
@@ -23,6 +24,9 @@ const routes = [{
   },{
     path: '/workouts',
     element: <WorkoutsPage />
+  }, {
+    path: '/workouts/:type',
+    element: <WorkoutTypePage />
   }]
 }]
 
