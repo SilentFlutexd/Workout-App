@@ -9,7 +9,8 @@ import NotFoundPage from './pages/NotFoundPage';
 import Layout from './Layout';
 import AboutPage from './pages/AboutPage';
 import WorkoutsPage from './pages/WorkoutsPage';
-import WorkoutTypePage from './pages/WorkoutTypePage';
+import SignupPage from './pages/SignUpPage';
+import LoginPage from './pages/LoginPage';
 
 const routes = [{
   path: '/',
@@ -25,11 +26,14 @@ const routes = [{
     path: '/workouts',
     element: <WorkoutsPage />
   }, {
-    path: '/workouts/:type',
-    element: <WorkoutTypePage />
+    path: '/signup',
+    element: <SignupPage />
+  }, {
+    path: '/login',
+    element: <LoginPage />
   }]
 }]
-
+  
 const router = createBrowserRouter(routes);
 
 function App() {

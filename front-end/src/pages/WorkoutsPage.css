@@ -1,0 +1,52 @@
+/* WorkoutsPage CSS */
+.workout-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+  
+  .workout-card {
+    background-color: #2b2b2b;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    text-align: left;
+    transition: transform 0.2s ease;
+  }
+  
+  .workout-card:hover {
+    transform: scale(1.01);
+  }
+  
+  .workout-card h3 {
+    color: #ff914d;
+    margin-bottom: 0.5rem;
+  }
+  
+  .workout-card p {
+    margin: 0.3rem 0;
+    color: #f0f0f0;
+  }
+  
+  .filter-controls {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+  
+  .filter-controls label {
+    color: #f0f0f0;
+    font-weight: 500;
+  }
+  
+  select {
+    padding: 0.4em;
+    border-radius: 6px;
+    background-color: #1e1e1e;
+    color: #f0f0f0;
+    border: 1px solid #555;
+  }
+  

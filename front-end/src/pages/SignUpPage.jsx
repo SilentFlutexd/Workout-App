@@ -17,6 +17,7 @@ export default function SignupPage() {
 
     return (
         <>
+
         <h2>Create an Account</h2>
         <form onSubmit={handleSubmit}>
 
@@ -28,8 +29,10 @@ export default function SignupPage() {
             required 
             />
 
+            <br />
 
             <label>Password:</label>
+            <br />
             <input 
             type="password" 
             value={password} 
@@ -37,7 +40,10 @@ export default function SignupPage() {
             required 
             />
 
+            <br />
+
             <label>Confirm Password:</label>
+            <br />
             <input 
             type="password" 
             value={confirmPassword} 

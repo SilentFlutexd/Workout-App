@@ -12,23 +12,32 @@ export default function LoginPage() {
 
     return (
         <>
-        <h2>Login</h2>
-        <form onSubmit={handleSubmit}/>
-        <label>Email:</label>
-        <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-        />
-        <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-        />
+        <div>
+            <h2>Login</h2>
+            <form onSubmit={handleSubmit}>
+            <label>Email:</label>
+            <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+            />
 
-        <button type="submit">Log In</button>
+            <br />
+
+            <label>Password:</label>
+            <br />
+            <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+            />
+
+            <button type="submit">Log In</button>
+            </form>
+        </div>
         </>
+        
     );
 }
