@@ -35,8 +35,8 @@ export default function LoginPage() {
                 
                 console.log('Login successful:', data.user);
                 
-                // Redirect to home page
-                navigate('/');
+                // Redirect to account page
+                navigate('/account');
             } else {
                 // Handle login errors
                 setError(data.error || 'Login failed');

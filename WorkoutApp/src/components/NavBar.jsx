@@ -20,6 +20,7 @@ export default function NavBar() {
       <ul className="navbar-links">
         <li><Link to="/">Home</Link></li>
         <li><Link to="/workouts">Workouts</Link></li>
+        <li><Link to="/account">Account</Link></li>
         
         {isAuthenticated() ? (
           // Show when logged in

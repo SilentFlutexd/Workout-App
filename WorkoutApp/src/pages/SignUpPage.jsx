@@ -47,9 +47,9 @@ export default function SignupPage() {
                 setSuccess('Account created successfully! Redirecting...');
                 console.log('Signup successful:', data.user);
                 
-                // Redirect to home page after a short delay
+                // Redirect to account page after a short delay
                 setTimeout(() => {
-                    navigate('/');
+                    navigate('/account');
                 }, 1500);
             } else {
                 // Handle signup errors

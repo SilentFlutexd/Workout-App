@@ -12,6 +12,7 @@ import WorkoutsPage from './pages/WorkoutsPage';
 import SignupPage from './pages/SignUpPage';
 import LoginPage from './pages/LoginPage';
 import { AuthProvider } from './contexts/AuthContext';
+import AccountPage from './pages/AccountPage';
 
 const routes = [{
   path: '/',
@@ -23,6 +24,9 @@ const routes = [{
   },{
     path: '/about',
     element: <AboutPage />
+  },{
+    path: '/account',
+    element: <AccountPage />
   },{
     path: '/workouts',
     element: <WorkoutsPage />
