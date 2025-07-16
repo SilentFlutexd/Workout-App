@@ -13,6 +13,7 @@ import SignupPage from './pages/SignUpPage';
 import LoginPage from './pages/LoginPage';
 import { AuthProvider } from './contexts/AuthContext';
 import AccountPage from './pages/AccountPage';
+import LogWorkoutPage from './pages/LogWorkoutPage';
 
 const routes = [{
   path: '/',
@@ -36,7 +37,11 @@ const routes = [{
   }, {
     path: '/login',
     element: <LoginPage />
-  }]
+  }, { 
+      path: '/workouts/log',
+      element: <LogWorkoutPage />
+    }
+  ]
 }]
   
 const router = createBrowserRouter(routes);

@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 # Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-change-this-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///workout_app.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///../instance/workout_app.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_EXPIRATION_DELTA'] = timedelta(hours=24)
 
@@ -20,8 +20,11 @@ app.config['JWT_EXPIRATION_DELTA'] = timedelta(hours=24)
 db = SQLAlchemy(app)
 CORS(app) 
 
-# User Model
+# --- MODEL DEFINITIONS ---
+# Models are defined first, with dependencies in order.
+
 class User(db.Model):
+    __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
@@ -32,15 +35,12 @@ class User(db.Model):
         return f'<User {self.email}>'
     
     def set_password(self, password):
-        """Hash and set the password"""
         self.password_hash = generate_password_hash(password)
     
     def check_password(self, password):
-        """Check if provided password matches hash"""
         return check_password_hash(self.password_hash, password)
     
     def to_dict(self):
-        """Convert user object to dictionary (excluding password)"""
         return {
             'id': self.id,
             'email': self.email,
@@ -48,9 +48,55 @@ class User(db.Model):
             'is_active': self.is_active
         }
 
-# JWT Token Management
+class Workout(db.Model):
+    __tablename__ = 'workouts'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    area = db.Column(db.String(100))
+    type = db.Column(db.String(100))
+    equipment = db.Column(db.String(100))
+    difficulty = db.Column(db.String(50))
+    description = db.Column(db.Text)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'area': self.area,
+            'type': self.type,
+            'equipment': self.equipment,
+            'difficulty': self.difficulty,
+            'description': self.description
+        }
+
+class WorkoutLog(db.Model):
+    __tablename__ = 'workout_log'
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    sets = db.Column(db.Integer)
+    reps = db.Column(db.Integer)
+    weight = db.Column(db.Float)
+    
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    workout_id = db.Column(db.Integer, db.ForeignKey('workouts.id'), nullable=False)
+
+    user = db.relationship('User', backref=db.backref('logs', lazy=True))
+    workout = db.relationship('Workout', backref=db.backref('logs', lazy=True))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'date': self.date.isoformat(),
+            'sets': self.sets,
+            'reps': self.reps,
+            'weight': self.weight,
+            'user_id': self.user_id,
+            'workout_id': self.workout_id
+        }
+    
+# --- JWT & VALIDATION HELPERS ---
+
 def generate_token(user_id):
-    """Generate JWT token for user"""
     payload = {
         'user_id': user_id,
         'exp': datetime.utcnow() + app.config['JWT_EXPIRATION_DELTA'],
@@ -59,16 +105,13 @@ def generate_token(user_id):
     return jwt.encode(payload, app.config['SECRET_KEY'], algorithm='HS256')
 
 def token_required(f):
-    """Decorator to require valid JWT token"""
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
-        
-        # Check for token in Authorization header
         if 'Authorization' in request.headers:
             auth_header = request.headers['Authorization']
             try:
-                token = auth_header.split(" ")[1]  # Bearer <token>
+                token = auth_header.split(" ")[1]
             except IndexError:
                 return jsonify({'message': 'Invalid token format'}), 401
         
@@ -76,7 +119,6 @@ def token_required(f):
             return jsonify({'message': 'Token is missing'}), 401
         
         try:
-            # Decode the token
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
             current_user = User.query.get(data['user_id'])
             if not current_user or not current_user.is_active:
@@ -87,155 +129,116 @@ def token_required(f):
             return jsonify({'message': 'Invalid token'}), 401
         
         return f(current_user, *args, **kwargs)
-    
     return decorated
 
-# Validation helpers
 def validate_email(email):
-    """Validate email format"""
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return re.match(pattern, email) is not None
 
 def validate_password(password):
-    """Validate password strength"""
     if len(password) < 8:
         return False, "Password must be at least 8 characters long"
-    if not re.search(r'[A-Za-z]', password):
-        return False, "Password must contain at least one letter"
-    if not re.search(r'\d', password):
-        return False, "Password must contain at least one number"
     return True, "Password is valid"
 
-# Routes
+# --- API ROUTES ---
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Health check endpoint"""
-    return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat()})
+    return jsonify({'status': 'healthy'})
+
+# Note: The GET /api/workouts route is needed for the "Log Workout" page dropdown.
+@app.route('/api/workouts', methods=['GET'])
+def get_workouts():
+    try:
+        workouts = Workout.query.all()
+        return jsonify([w.to_dict() for w in workouts])
+    except Exception as e:
+        return jsonify({'error': 'Could not fetch workouts'}), 500
 
 @app.route('/api/auth/signup', methods=['POST'])
 def signup():
-    """User registration endpoint"""
-    try:
-        data = request.get_json()
+    data = request.get_json()
+    if not data or not data.get('email') or not data.get('password'):
+        return jsonify({'error': 'Email and password are required'}), 400
+    
+    if User.query.filter_by(email=data['email'].strip().lower()).first():
+        return jsonify({'error': 'Email already registered'}), 409
         
-        # Validate input
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-        
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
-        confirm_password = data.get('confirmPassword', '')
-        
-        # Validation checks
-        if not email or not password:
-            return jsonify({'error': 'Email and password are required'}), 400
-        
-        if not validate_email(email):
-            return jsonify({'error': 'Invalid email format'}), 400
-        
-        if password != confirm_password:
-            return jsonify({'error': 'Passwords do not match'}), 400
-        
-        is_valid, message = validate_password(password)
-        if not is_valid:
-            return jsonify({'error': message}), 400
-        
-        # Check if user already exists
-        if User.query.filter_by(email=email).first():
-            return jsonify({'error': 'Email already registered'}), 409
-        
-        # Create new user
-        user = User(email=email)
-        user.set_password(password)
-        
-        db.session.add(user)
-        db.session.commit()
-        
-        # Generate token
-        token = generate_token(user.id)
-        
-        return jsonify({
-            'message': 'User created successfully',
-            'token': token,
-            'user': user.to_dict()
-        }), 201
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': 'Internal server error'}), 500
+    user = User(email=data['email'].strip().lower())
+    user.set_password(data['password'])
+    db.session.add(user)
+    db.session.commit()
+    
+    token = generate_token(user.id)
+    return jsonify({'message': 'User created', 'token': token, 'user': user.to_dict()}), 201
 
 @app.route('/api/auth/login', methods=['POST'])
 def login():
-    """User login endpoint"""
-    try:
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-        
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
-        
-        if not email or not password:
-            return jsonify({'error': 'Email and password are required'}), 400
-        
-        # Find user
-        user = User.query.filter_by(email=email).first()
-        
-        if not user or not user.check_password(password):
-            return jsonify({'error': 'Invalid email or password'}), 401
-        
-        if not user.is_active:
-            return jsonify({'error': 'Account is deactivated'}), 401
-        
-        # Generate token
-        token = generate_token(user.id)
-        
-        return jsonify({
-            'message': 'Login successful',
-            'token': token,
-            'user': user.to_dict()
-        })
-        
-    except Exception as e:
-        return jsonify({'error': 'Internal server error'}), 500
+    data = request.get_json()
+    if not data or not data.get('email') or not data.get('password'):
+        return jsonify({'error': 'Email and password are required'}), 400
+    
+    user = User.query.filter_by(email=data['email'].strip().lower()).first()
+    
+    if not user or not user.check_password(data['password']):
+        return jsonify({'error': 'Invalid email or password'}), 401
+    
+    token = generate_token(user.id)
+    return jsonify({'message': 'Login successful', 'token': token, 'user': user.to_dict()})
 
 @app.route('/api/auth/profile', methods=['GET'])
 @token_required
 def get_profile(current_user):
-    """Get current user profile"""
-    return jsonify({
-        'user': current_user.to_dict()
-    })
+    return jsonify({'user': current_user.to_dict()})
 
-@app.route('/api/auth/logout', methods=['POST'])
+@app.route('/api/logs', methods=['POST'])
 @token_required
-def logout(current_user):
-    """Logout endpoint (client should discard token)"""
-    return jsonify({'message': 'Logged out successfully'})
+def log_workout(current_user):
+    data = request.get_json()
+    if not data or 'workout_id' not in data:
+        return jsonify({'error': 'Missing data'}), 400
 
-# Error handlers
-@app.errorhandler(404)
-def not_found(error):
-    return jsonify({'error': 'Endpoint not found'}), 404
+    new_log = WorkoutLog(
+        user_id=current_user.id,
+        workout_id=data['workout_id'],
+        sets=data.get('sets'),
+        reps=data.get('reps'),
+        weight=data.get('weight')
+    )
+    
+    db.session.add(new_log)
+    db.session.commit()
+    return jsonify({'message': 'Workout logged successfully!', 'log': new_log.to_dict()}), 201
 
-@app.errorhandler(405)
-def method_not_allowed(error):
-    return jsonify({'error': 'Method not allowed'}), 405
+@app.route('/api/logs', methods=['GET'])
+@token_required
+def get_logs(current_user):
+    """Fetches all logs for the current user"""
+    try:
+        # Query logs and order by most recent date first
+        logs = WorkoutLog.query.filter_by(user_id=current_user.id).order_by(WorkoutLog.date.desc()).all()
+        
+        # Create a list of log dictionaries that includes the workout name
+        results = [
+            {
+                'id': log.id,
+                'date': log.date.strftime('%Y-%m-%d'), # Format date for readability
+                'workout_name': log.workout.name,  # Get name from the related Workout object
+                'sets': log.sets,
+                'reps': log.reps,
+                'weight': log.weight
+            } for log in logs
+        ]
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({'error': 'Failed to fetch logs'}), 500
+    
+# --- APP INITIALIZATION ---
 
-@app.errorhandler(500)
-def internal_error(error):
-    db.session.rollback()
-    return jsonify({'error': 'Internal server error'}), 500
-
-# Initialize database
 def init_db():
-    """Initialize database tables"""
     with app.app_context():
         db.create_all()
 
 if __name__ == '__main__':
     init_db()
-    # Run in debug mode for development
     app.run(debug=True, host='0.0.0.0', port=5001)
